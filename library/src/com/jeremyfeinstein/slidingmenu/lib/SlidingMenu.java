@@ -69,7 +69,7 @@ public class SlidingMenu extends RelativeLayout {
 	private CustomViewBehind mViewBehind;
 
 	private OnOpenListener mOpenListener;
-	
+
 	private OnOpenListener mSecondaryOpenListner;
 
 	private OnCloseListener mCloseListener;
@@ -201,13 +201,22 @@ public class SlidingMenu extends RelativeLayout {
 	 */
 	public SlidingMenu(Context context, AttributeSet attrs, int defStyle) {
 		super(context, attrs, defStyle);
-		
-		LayoutParams behindParams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
+
+		int width = LayoutParams.MATCH_PARENT;
+		int height = LayoutParams.MATCH_PARENT;
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+			width = getResources().getDisplayMetrics().widthPixels;
+			height = getResources().getDisplayMetrics().heightPixels;
+		}
+
+		LayoutParams behindParams = new LayoutParams(width, height);
 		mViewBehind = new CustomViewBehind(context);
 		addView(mViewBehind, behindParams);
-		LayoutParams aboveParams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
+
+		LayoutParams aboveParams = new LayoutParams(width, height);
 		mViewAbove = new CustomViewAbove(context);
 		addView(mViewAbove, aboveParams);
+
 		// register the CustomViewBehind with the CustomViewAbove
 		mViewAbove.setCustomViewBehind(mViewBehind);
 		mViewBehind.setCustomViewAbove(mViewAbove);
@@ -217,7 +226,7 @@ public class SlidingMenu extends RelativeLayout {
 			public static final int POSITION_SECONDARY_OPEN = 2;
 
 			public void onPageScrolled(int position, float positionOffset,
-					int positionOffsetPixels) { }
+									   int positionOffsetPixels) { }
 
 			public void onPageSelected(int position) {
 				if (position == POSITION_OPEN && mOpenListener != null) {
@@ -243,7 +252,7 @@ public class SlidingMenu extends RelativeLayout {
 		}
 		int viewBehind = ta.getResourceId(R.styleable.SlidingMenu_viewBehind, -1);
 		if (viewBehind != -1) {
-			setMenu(viewBehind); 
+			setMenu(viewBehind);
 		} else {
 			setMenu(new FrameLayout(context));
 		}
@@ -284,7 +293,7 @@ public class SlidingMenu extends RelativeLayout {
 
 	/**
 	 * Attaches the SlidingMenu to an entire Activity
-	 * 
+	 *
 	 * @param activity the Activity
 	 * @param slideStyle either SLIDING_CONTENT or SLIDING_WINDOW
 	 */
@@ -294,7 +303,7 @@ public class SlidingMenu extends RelativeLayout {
 
 	/**
 	 * Attaches the SlidingMenu to an entire Activity
-	 * 
+	 *
 	 * @param activity the Activity
 	 * @param slideStyle either SLIDING_CONTENT or SLIDING_WINDOW
 	 * @param actionbarOverlay whether or not the ActionBar is overlaid
@@ -312,28 +321,28 @@ public class SlidingMenu extends RelativeLayout {
 		a.recycle();
 
 		switch (slideStyle) {
-		case SLIDING_WINDOW:
-			mActionbarOverlay = false;
-			ViewGroup decor = (ViewGroup) activity.getWindow().getDecorView();
-			ViewGroup decorChild = (ViewGroup) decor.getChildAt(0);
-			// save ActionBar themes that have transparent assets
-			decorChild.setBackgroundResource(background);
-			decor.removeView(decorChild);
-			decor.addView(this);
-			setContent(decorChild);
-			break;
-		case SLIDING_CONTENT:
-			mActionbarOverlay = actionbarOverlay;
-			// take the above view out of
-			ViewGroup contentParent = (ViewGroup)activity.findViewById(android.R.id.content);
-			View content = contentParent.getChildAt(0);
-			contentParent.removeView(content);
-			contentParent.addView(this);
-			setContent(content);
-			// save people from having transparent backgrounds
-			if (content.getBackground() == null)
-				content.setBackgroundResource(background);
-			break;
+			case SLIDING_WINDOW:
+				mActionbarOverlay = false;
+				ViewGroup decor = (ViewGroup) activity.getWindow().getDecorView();
+				ViewGroup decorChild = (ViewGroup) decor.getChildAt(0);
+				// save ActionBar themes that have transparent assets
+				decorChild.setBackgroundResource(background);
+				decor.removeView(decorChild);
+				decor.addView(this);
+				setContent(decorChild);
+				break;
+			case SLIDING_CONTENT:
+				mActionbarOverlay = actionbarOverlay;
+				// take the above view out of
+				ViewGroup contentParent = (ViewGroup)activity.findViewById(android.R.id.content);
+				View content = contentParent.getChildAt(0);
+				contentParent.removeView(content);
+				contentParent.addView(this);
+				setContent(content);
+				// save people from having transparent backgrounds
+				if (content.getBackground() == null)
+					content.setBackgroundResource(background);
+				break;
 		}
 	}
 
@@ -366,6 +375,19 @@ public class SlidingMenu extends RelativeLayout {
 	}
 
 	/**
+	 * Retrieves the height of the status bar
+	 * @return the height in int
+	 */
+	private int getStatusBarHeight() {
+		int result = 0;
+		int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+		if (resourceId > 0) {
+			result = getResources().getDimensionPixelSize(resourceId);
+		}
+		return result;
+	}
+
+	/**
 	 * Set the behind view (menu) content from a layout resource. The resource will be inflated, adding all top-level views
 	 * to the behind view.
 	 *
@@ -378,9 +400,15 @@ public class SlidingMenu extends RelativeLayout {
 	/**
 	 * Set the behind view (menu) content to the given View.
 	 *
-	 * @param view The desired content to display.
+	 * @param v The desired content to display.
 	 */
 	public void setMenu(View v) {
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+			// Add padding to view to compensate for status bar (needed for Lollipop when using
+			// SLIDING_WINDOW mode with SlidingMenu)
+			// https://github.com/jfeinstein10/SlidingMenu/issues/680#issuecomment-75761687
+			v.setPadding(0, getStatusBarHeight(), 0, 0);
+		}
 		mViewBehind.setContent(v);
 	}
 
@@ -405,9 +433,15 @@ public class SlidingMenu extends RelativeLayout {
 	/**
 	 * Set the secondary behind view (right menu) content to the given View.
 	 *
-	 * @param view The desired content to display.
+	 * @param v The desired content to display.
 	 */
 	public void setSecondaryMenu(View v) {
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+			// Add padding to view to compensate for status bar (needed for Lollipop when using
+			// SLIDING_WINDOW mode with SlidingMenu)
+			// https://github.com/jfeinstein10/SlidingMenu/issues/680#issuecomment-75761687
+			v.setPadding(0, getStatusBarHeight(), 0, 0);
+		}
 		mViewBehind.setSecondaryContent(v);
 		//		mViewBehind.invalidate();
 	}
@@ -468,7 +502,7 @@ public class SlidingMenu extends RelativeLayout {
 			setSlidingEnabled(false);
 			mViewAbove.setCustomViewBehind(null);
 			mViewAbove.setCurrentItem(1);
-			//			mViewBehind.setCurrentItem(0);	
+			//			mViewBehind.setCurrentItem(0);
 		} else {
 			mViewAbove.setCurrentItem(1);
 			//			mViewBehind.setCurrentItem(1);
@@ -555,7 +589,7 @@ public class SlidingMenu extends RelativeLayout {
 	public boolean isMenuShowing() {
 		return mViewAbove.getCurrentItem() == 0 || mViewAbove.getCurrentItem() == 2;
 	}
-	
+
 	/**
 	 * Checks if is the behind view showing.
 	 *
@@ -660,7 +694,7 @@ public class SlidingMenu extends RelativeLayout {
 	public float getBehindScrollScale() {
 		return mViewBehind.getScrollScale();
 	}
-	
+
 	/**
 	 * Gets the touch mode margin threshold
 	 * @return the touch mode margin threshold
@@ -668,7 +702,7 @@ public class SlidingMenu extends RelativeLayout {
 	public int getTouchmodeMarginThreshold() {
 		return mViewBehind.getMarginThreshold();
 	}
-	
+
 	/**
 	 * Set the touch mode margin threshold
 	 * @param touchmodeMarginThreshold
@@ -883,17 +917,17 @@ public class SlidingMenu extends RelativeLayout {
 		mOpenListener = listener;
 	}
 
-	
+
 	/**
 	 * Sets the OnOpenListner for secondary menu  {@link OnOpenListener#onOpen() OnOpenListener.onOpen()} will be called when the secondary SlidingMenu is opened
-	 * 
+	 *
 	 * @param listener the new OnOpenListener
 	 */
-	
+
 	public void setSecondaryOnOpenListner(OnOpenListener listener) {
 		mSecondaryOpenListner = listener;
 	}
-	
+
 	/**
 	 * Sets the OnCloseListener. {@link OnCloseListener#onClose() OnCloseListener.onClose()} will be called when any one of the SlidingMenu is closed
 	 *
@@ -950,14 +984,14 @@ public class SlidingMenu extends RelativeLayout {
 
 		public static final Parcelable.Creator<SavedState> CREATOR =
 				new Parcelable.Creator<SavedState>() {
-			public SavedState createFromParcel(Parcel in) {
-				return new SavedState(in);
-			}
+					public SavedState createFromParcel(Parcel in) {
+						return new SavedState(in);
+					}
 
-			public SavedState[] newArray(int size) {
-				return new SavedState[size];
-			}
-		};
+					public SavedState[] newArray(int size) {
+						return new SavedState[size];
+					}
+				};
 
 	}
 
